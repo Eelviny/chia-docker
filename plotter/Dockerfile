@@ -4,7 +4,7 @@ RUN pip install --extra-index-url https://hosted.chia.net/simple/ chia-blockchai
 
 RUN chia init
 
-COPY ../keyfile plotter.sh /root/
+COPY keyfile plotter.sh /root/
 
 RUN chia keys add -f /root/keyfile && \
     rm /root/keyfile && \

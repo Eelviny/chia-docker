@@ -14,9 +14,9 @@ The database for the farmer will be persisted in a Docker volume - this is relat
 
 ### Generating a keyfile
 
-1. Create a blank file in the root of this repository named keyfile: `touch keyfile`
-2. Build the genkey image: `cd farmer && docker build -t localhost/chia-genkey .`
-3. Go back to the root of this repository and run command: `docker run --rm localhost/chia-farmer bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`
+1. Create a blank file in farmer named keyfile: `touch farmer/keyfile`
+2. Build the genkey image: `docker build -t localhost/chia-genkey farmer/`
+3. Run command: `docker run --rm localhost/chia-farmer bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`. Copy the keyfile to both the plotter and farmer directories.
 4. Delete the genkey image, as it's only ever needed once: `docker image rm localhost/chia-genkey:latest`
 
 Your keyfile should now have a newly generated key in it. **IMPORTANT: keep this key safe. It will also be embedded in your docker containers, so don't publish or share these containers publicly.**
@@ -25,12 +25,12 @@ Your keyfile should now have a newly generated key in it. **IMPORTANT: keep this
 
 It can take a while for the farmer to sync, so start this before you start plotting. This container needs 2 volumes: one for the farmer database, and one shared volume where the plots are stored.
 
-1. Build the farmer image: `cd farmer && docker build -t localhost/chia-farmer .`
+1. Build the farmer image: `docker build -t localhost/chia-farmer farmer/`
 2. Create a docker volume for the database: `docker volume create chia-db`
 3. Run this command to start the farmer: `docker run -it -p 8444:8444 --name farmer -v chia-db:/root/.chia -v /plot-storage:/plots:ro localhost/chia-farmer`
 4. Port forward port 8444 in your router to your server.
 
-The farmer will start up, import the keyfile to its keychain and then deletes the original keyfile within the container. It will then start the farmer daemon and run a check of all your plots. It will then report the status of the node once an hour. You can type `CTRL+P CTRL+Q` to detach yourself from the container and leave it running in the background.
+The farmer will start up, import the keyfile to its keychain and then delete the original keyfile within the container. It will then start the farmer daemon and run a check of all your plots. You can type `CTRL+P CTRL+Q` to detach yourself from the container and leave it running in the background.
 
 The plots directory is mounted as read-only, for safety.
 
@@ -38,8 +38,8 @@ The plots directory is mounted as read-only, for safety.
 
 Multiple containers of the plotter can be run in parallel. It's recommended to stagger the start times to improve efficiency. Each container will keep generating new plots for as long as it's running, and also has an useful killswitch so you can instruct the container to exit once it finishes its next plot.
 
-1. Build the plotter image: `cd plotter && docker build -t localhost/chia-plotter .`
-2. Start the plotter with `docker run -d --name plotter1 --privileged -v /scratch/plotter1:/tmp -v /storage/chia:/plots localhost/chia-plotter`
+1. Build the plotter image: `docker build -t localhost/chia-plotter plotter/`
+2. Start the plotter with `docker run -d --name plotter1 -v /scratch/plotter1:/tmp -v /storage/chia:/plots localhost/chia-plotter`
 3. Repeat, each time with plotter2, plotter3 etc.
 
 **IMPORTANT**: Do not use the same /tmp directory for every plotter. On startup, the plotter will delete all temporary files it sees in this folder, to cleanup from potential failed previous runs. In the above example, the /tmp folder is given a subdirectory on the scratch drive.
