@@ -16,7 +16,7 @@ The database for the farmer will be persisted in a Docker volume - this is relat
 
 1. Create a blank file in farmer named keyfile: `touch farmer/keyfile`
 2. Build the genkey image: `docker build -t localhost/chia-genkey farmer/`
-3. Run command: `docker run --rm localhost/chia-farmer bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`. Copy the keyfile to both the plotter and farmer directories.
+3. Run command: `docker run --rm localhost/chia-genkey bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`. Copy the keyfile to both the plotter and farmer directories.
 4. Delete the genkey image, as it's only ever needed once: `docker image rm localhost/chia-genkey:latest`
 
 Your keyfile should now have a newly generated key in it. **IMPORTANT: keep this key safe. It will also be embedded in your docker containers, so don't publish or share these containers publicly.**
