@@ -55,6 +55,7 @@ If you're following this guide I assume that you already have a good knowledge o
 - Try not to attach yourself directly to the running containers. One wrong keystroke and you can accidentally terminate your plotter. Instead use `docker logs -tf plotter1` to get a live updated view of the logs, that you can view and `CTRL+C` to your heart's content.
 - To check the status of your farmer, run `docker exec -it farmer bash`. This will open a new shell where you can type commands such as `chia show -sc` and `chia wallet show` without disturbing the running node.
 - Viewing the logs of the farmer will give you an hourly update on the status of the node, along with your wallet balance.
+- You can get the path to the logfile of each plotter using the following command: `docker inspect --format='{{.LogPath}}' plotter1`. You can use this path in external tools such as [chiaplotgraph](https://github.com/Eelviny/chia-docker/issues/6). This is untested.
 
 ## Upgrading
 
