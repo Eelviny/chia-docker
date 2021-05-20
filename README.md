@@ -67,3 +67,17 @@ If for some reason your database is corrupt, deleting the chia-db volume and cre
 ### Plotter
 
 Plotters are stateless, and can be deleted at any time. Stop the plotter gracefully with `docker exec plotter1 touch /root/stoprun`, wait for the current plot to finish, then delete the container. Rebuild the plotter image and start it again.
+
+## Troubleshooting
+
+Here's some troubleshooting steps for newcomers, based on Github issues that have come in. If you have any questions or had difficulty getting something up but found the issue, make a ticket or PR.
+
+### My farmer is not syncing well and I have very few (if any connections)
+
+Make sure you've forwarded port 8444 to the machine. Chia requires that the port be accessible from the internet, or you won't get any peers connecting to you.
+
+### My farmer is not syncing but I have plenty of connections
+
+Chia is growing fast and there [have been reports](https://github.com/Eelviny/chia-docker/issues/5) that running the farmer on a slow disk means it can't keep up with the changes in the network, causing the node to fall behind the updates and go out of sync.
+
+This guide shows to create a Docker volume to hold your farmer, which will hold the database on your boot drive by default, but you can use a bindmount instead to place the chia-db on whichever drive you like. `docker run -it -p 8444:8444 --name farmer -v /path/to/database:/root/.chia -v /plot-storage:/plots:ro localhost/chia-farmer`
