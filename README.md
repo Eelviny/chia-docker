@@ -1,12 +1,12 @@
 # Chia Docker
 
-A set of Dockerfiles to run chia plotters and a farmer inside a container, with all dependencies already available.
+A set of Dockerfiles to run chia plotters and a farmer inside a container, with all dependencies already available. Run your plotter containers separate from your farmer, so you can update the farmer independently without stopping your plots.
 
 ## Prerequisites
 
 For this setup, I assume that you have a single directory for storing plots, in this guide this path is shown as `/plot-storage`. Make sure this path is replaced with the actual location that your storage drives are mounted on. Only one directory is supported - you should be using some kind of RAID/drive pooling setup. [ZFS](https://openzfs.github.io/openzfs-docs/Getting%20Started/index.html) is highly recommended, and can pool drives together to make one big volume.
 
-A second drive is also indicated as `/scratch` - this is where the plotters will generate their plots. This should be a single fast (preferably NVMe) SSD.
+A second drive is also indicated as `/scratch` - this is where the plotters will generate their plots. This should be a single fast (preferably NVMe) SSD. If you have multiple SSDs for plotting, consider putting them in RAID0 to allow for all plotters to share the resources. A performant filesystem such as XFS is good for this.
 
 The database for the farmer will be persisted in a Docker volume - this is relatively small, and will just be stored on your boot drive.
 
