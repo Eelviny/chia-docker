@@ -3,13 +3,14 @@
 chia init
 chia keys add -f /root/keyfile
 rm /root/keyfile
-sed -i 's/localhost/127.0.0.1/g' ~/.chia/mainnet/config/config.yaml
+sed -i 's/localhost/127.0.0.1/g' ~/.chia/mainnet/config/config.yaml # Fix for https://github.com/Eelviny/chia-docker/issues/1
 chia plots add -d /plots
 chia start farmer
-chia plots check
+chia plots check -n 5
+
 while [ 1 ]
 do
-  chia show -s
+  chia show -sc
   chia wallet show
   sleep 1h
 done

@@ -2,6 +2,10 @@
 
 A set of Dockerfiles to run chia plotters and a farmer inside a container, with all dependencies already available. Run your plotter containers separate from your farmer, so you can update the farmer independently without stopping your plots.
 
+**Now updated for farming in a pool! New plotting config needed, see instructions below.**
+
+This repository is designed as a base for you to make your own configuration from; never blindly trust the code of some random person on the internet with your XCH. Fork this repo, read the scripts, understand them and customize them to your needs.
+
 ## Prerequisites
 
 For this setup, I assume that you have a single directory for storing plots, in this guide this path is shown as `/plot-storage`. Make sure this path is replaced with the actual location that your storage drives are mounted on. Only one directory is supported - you should be using some kind of RAID/drive pooling setup. [ZFS](https://openzfs.github.io/openzfs-docs/Getting%20Started/index.html) is highly recommended, and can pool drives together to make one big volume.
@@ -16,8 +20,9 @@ The database for the farmer will be persisted in a Docker volume - this is relat
 
 1. Create a blank file in farmer named keyfile: `touch farmer/keyfile`
 2. Build the genkey image: `docker build -t localhost/chia-genkey farmer/`
-3. Run command: `docker run --rm localhost/chia-genkey bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`. Copy the keyfile to both the plotter and farmer directories.
-4. Delete the genkey image, as it's only ever needed once: `docker image rm localhost/chia-genkey:latest`
+3. Run command: `docker run --rm localhost/chia-genkey bash -c 'chia init && chia keys generate_and_print' | sed -n '7p' > keyfile`.
+4. Copy the keyfile to the farmer directory.
+5. Delete the genkey image, as it's only ever needed once: `docker image rm localhost/chia-genkey:latest`
 
 Your keyfile should now have a newly generated key in it. **IMPORTANT: keep this key safe. It will also be embedded in your docker containers, so don't publish or share these containers publicly.**
 
@@ -34,13 +39,27 @@ The farmer will start up, import the keyfile to its keychain and then delete the
 
 The plots directory is mounted as read-only, for safety.
 
+### Setting up pooling
+
+Under the hood, Chia's pooling protocol uses a smart contract and an NFT (Non fungible token). **You need to get this NFT and apply the token to the plotter to get plots compatible with pooling.** If you continue to create your plots the same way you did pre-1.2, they won't be compatible with pools.
+
+For this example I'm using [pool.garden](https://pool.garden), but substitute the pool address with your pool of choice. Remember, you can always move your generated plots to another pool later.
+
+1. Enter your running farmer container: `podman exec -it farmer bash`
+2. Creating the NFT requires a tiny amount of XCH. Head over to https://faucet.chia.net/ and enter your wallet address (use `chia wallet get_address` to see your address) to get 100 mojo for this.
+3. Create your NFT by running `chia plotnft create -u https://farm.pool.garden -s pool`
+4. Wait for the transaction to complete. First you must be synced up, `chia show -s` shows your status. Type `chia plotnft show` to see the current status of your NFT creation.
+5. Type `chia plotnft show | grep 'P2 singleton address' | grep -oP 'xch.+$'` to get your "P2 singleton address". Note it down for the next stage.
+6. Type `chia keys show | grep 'Farmer public key' | grep -oP '(?<=: ).+$'` to get your "Farmer public key". Note it down for the next stage.
+
 ### Starting a plotter
 
 Multiple containers of the plotter can be run in parallel. It's recommended to stagger the start times to improve efficiency. Each container will keep generating new plots for as long as it's running, and also has an useful killswitch so you can instruct the container to exit once it finishes its next plot.
 
-1. Build the plotter image: `docker build -t localhost/chia-plotter plotter/`
-2. Start the plotter with `docker run -d --name plotter1 -v /scratch/plotter1:/tmp -v /storage/chia:/plots localhost/chia-plotter`
-3. Repeat, each time with plotter2, plotter3 etc.
+1. Open the Dockerfile for the plotter. Replace `<contract address>` with your Farmer public key, and `<public key>` with your P2 singleton address. These values are not sensitive - if someone got hold of them, the worst they could do is help you by making some plots for you.
+2. Build the plotter image: `docker build -t localhost/chia-plotter plotter/`
+3. Start the plotter with `docker run -d --name plotter1 -v /scratch/plotter1:/tmp -v /storage/chia:/plots localhost/chia-plotter`
+4. Repeat, each time with plotter2, plotter3 etc.
 
 **IMPORTANT**: Do not use the same /tmp directory for every plotter. On startup, the plotter will delete all temporary files it sees in this folder, to cleanup from potential failed previous runs. In the above example, the /tmp folder is given a subdirectory on the scratch drive.
 
