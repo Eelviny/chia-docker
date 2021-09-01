@@ -6,11 +6,6 @@ rm /root/keyfile
 sed -i 's/localhost/127.0.0.1/g' ~/.chia/mainnet/config/config.yaml # Fix for https://github.com/Eelviny/chia-docker/issues/1
 chia plots add -d /plots
 chia start farmer
-chia plots check -n 5
-
-while [ 1 ]
-do
-  chia show -sc
-  chia wallet show
-  sleep 1h
-done
+sleep 10
+touch ~/.chia/mainnet/log/debug.log
+tail -f ~/.chia/mainnet/log/debug.log

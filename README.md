@@ -8,7 +8,7 @@ This repository is designed as a base for you to make your own configuration fro
 
 ## Prerequisites
 
-For this setup, I assume that you have a single directory for storing plots, in this guide this path is shown as `/plot-storage`. Make sure this path is replaced with the actual location that your storage drives are mounted on. Only one directory is supported - you should be using some kind of RAID/drive pooling setup. [ZFS](https://openzfs.github.io/openzfs-docs/Getting%20Started/index.html) is highly recommended, and can pool drives together to make one big volume.
+For this setup, I assume that you have a single directory for storing plots, in this guide this path is shown as `/plot-storage`. Make sure this path is replaced with the actual location that your storage drives are mounted on. One directory is supported out the box, but you can mount multiple drives to subdirectories the same directory and then modify the farmer.sh file to read all of them.
 
 A second drive is also indicated as `/scratch` - this is where the plotters will generate their plots. This should be a single fast (preferably NVMe) SSD. If you have multiple SSDs for plotting, consider putting them in RAID0 to allow for all plotters to share the resources. A performant filesystem such as XFS is good for this.
 
@@ -32,7 +32,7 @@ It can take a while for the farmer to sync, so start this before you start plott
 
 1. Build the farmer image: `docker build -t localhost/chia-farmer farmer/`
 2. Create a docker volume for the database: `docker volume create chia-db`
-3. Run this command to start the farmer: `docker run -it -p 8444:8444 --name farmer -v chia-db:/root/.chia -v /plot-storage:/plots:ro localhost/chia-farmer`
+3. Run this command to start the farmer: `docker run -it -p 8444:8444 --name farmer -v chia-db:/home/chia/.chia -v /plot-storage:/plots:ro localhost/chia-farmer`
 4. Port forward port 8444 in your router to your server.
 
 The farmer will start up, import the keyfile to its keychain and then delete the original keyfile within the container. It will then start the farmer daemon and run a check of all your plots. You can type `CTRL+P CTRL+Q` to detach yourself from the container and leave it running in the background.
@@ -43,11 +43,11 @@ The plots directory is mounted as read-only, for safety.
 
 Under the hood, Chia's pooling protocol uses a smart contract and an NFT (Non fungible token). **You need to get this NFT and apply the token to the plotter to get plots compatible with pooling.** If you continue to create your plots the same way you did pre-1.2, they won't be compatible with pools.
 
-For this example I'm using [pool.garden](https://pool.garden), but substitute the pool address with your pool of choice. Remember, you can always move your generated plots to another pool later.
+For this example I'm using [pool.space](https://pool.space), but substitute the pool address with your pool of choice. Remember, you can always move your generated plots to another pool later.
 
 1. Enter your running farmer container: `podman exec -it farmer bash`
 2. Creating the NFT requires a tiny amount of XCH. Head over to https://faucet.chia.net/ and enter your wallet address (use `chia wallet get_address` to see your address) to get 100 mojo for this.
-3. Create your NFT by running `chia plotnft create -u https://farm.pool.garden -s pool`
+3. Create your NFT by running `chia plotnft create -u https://eu1.pool.space -s pool`
 4. Wait for the transaction to complete. First you must be synced up, `chia show -s` shows your status. Type `chia plotnft show` to see the current status of your NFT creation.
 5. Type `chia plotnft show | grep 'P2 singleton address' | grep -oP 'xch.+$'` to get your "P2 singleton address". Note it down for the next stage.
 6. Type `chia keys show | grep 'Farmer public key' | grep -oP '(?<=: ).+$'` to get your "Farmer public key". Note it down for the next stage.
@@ -101,3 +101,13 @@ Make sure you've forwarded port 8444 to the machine. Chia requires that the port
 Chia is growing fast and there [have been reports](https://github.com/Eelviny/chia-docker/issues/5) that running the farmer on a slow disk means it can't keep up with the changes in the network, causing the node to fall behind the updates and go out of sync.
 
 This guide shows to create a Docker volume to hold your farmer, which will hold the database on your boot drive by default, but you can use a bindmount instead to place the chia-db on whichever drive you like. `docker run -it -p 8444:8444 --name farmer -v /path/to/database:/root/.chia -v /plot-storage:/plots:ro localhost/chia-farmer`
+
+### When starting my farmer, I get permission denied errors
+
+As of 1.2.5, the farmer has become a lot more strict in how it handles permissions, specifically it requires permission 0600 to be set on all private keys. The new Dockerfile runs chia as a non-root user to restrict its access.
+
+1. To fix the permissions issue, start your container using this command: `docker run -d --rm --name farmer -v chia-db:/home/chia/.chia localhost/chia-farmer bash`
+2. Once the container is running, start up a new shell into the container with root privileges: `docker exec -u 0:0 -it farmer bash`
+3. While in privileged mode, we will fix the permissions. Type `chown 1000:1000 -R /home/chia/.chia/` to ensure that the non-root user has permission for the files inside the volume.
+4. Then, use these two commands to set permissions: `find /home/chia/.chia/ -type d -exec chmod 0700 {} && find /home/chia/.chia/ -type f -exec 0600 {}`. This will set all folder permissions to 0700 and files to 0600 respectively.
+5. Log out of this shell, and stop the running container. Start the container using the normal command.
